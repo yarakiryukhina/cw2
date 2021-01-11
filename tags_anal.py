@@ -19,7 +19,7 @@ df = pd.read_csv(fn_in, delimiter='\t', dtype=str).drop_duplicates('id_str', kee
 # Parsing and converting to native datetime64 data type
 df.created_at = pd.to_datetime(df.created_at)
 
-df = df[df.created_at.between(pd.Timestamp(2021,1,4,0,0,0), pd.Timestamp(2021,1,5,23,59,59,59))]
+df = df[df.created_at.between(pd.Timestamp(2021,1,4,16,0,0), pd.Timestamp(2021,1,5,0,0,0,0))]
 
 
 print('==> TSV read is done')
@@ -30,7 +30,8 @@ fields = ['in_reply_to_user_id_str',
           'from_user_id_str',
           'in_reply_to_status_id_str',
           'user_followers_count',
-          'user_friends_count'
+          'user_friends_count',
+          'geo_coordinates'
 ]
 
 df[fields] = df[fields].fillna(0).astype(np.int64)
@@ -148,7 +149,7 @@ print('\nTop retweets\n')
 print(top_retweets[:5])
 
 # % are geocoded
-geo_total = df.geo_coordinates.dropna().size
+geo_total = np.sum(df.geo_coordinates)
 geo_coded = np.round(geo_total * 100 / df.id_str.size, 3)
 
 print(f'\nGeocoded tweets and retweets: {geo_total} ({geo_coded}%)')
@@ -193,21 +194,18 @@ print(hashtags)
 print('\nMost mentioned users')
 print(mentions)
 
-ts_date_from = pd.Timestamp(2021,1,4,14,0,0)
-ts_date_till = pd.Timestamp(2021,1,5,15,0,0)
-
 # Timeseries for all posts
 
 ts = df.set_index(pd.DatetimeIndex(df.created_at)).sort_index(ascending=True)['id_str']
 
 # Making 1 hour timeseries resample
-ts_1hour = ts.loc[ts_date_from:ts_date_till].resample('1H').count()
+ts_1hour = ts.resample('10min').count()
 
 # Timeseries for retweets
 df_ts_rt = df[retweets][['created_at', 'id_str']]
 ts_rt = df_ts_rt.set_index(pd.DatetimeIndex(df_ts_rt.created_at)).sort_index(ascending=True)['id_str']
 
-ts_rt_1hour = ts_rt.loc[ts_date_from:ts_date_till].resample('1H').count()
+ts_rt_1hour = ts_rt.resample('10min').count()
 
 del(df_ts_rt)
 
@@ -215,11 +213,11 @@ del(df_ts_rt)
 df_ts_tw = df[~retweets][['created_at', 'id_str']]
 ts_tw = df_ts_tw.set_index(pd.DatetimeIndex(df_ts_tw.created_at)).sort_index(ascending=True)['id_str']
 
-ts_tw_1hour = ts_tw.loc[ts_date_from:ts_date_till].resample('1H').count()
+ts_tw_1hour = ts_tw.resample('10min').count()
 
 del(df_ts_tw)
 
-print('\nTimeseries (1 hour)')
+print('\nTimeseries (10min)')
 print(ts_1hour, '\n')
 
 # Calculating users tweeting and retweeting this many times
